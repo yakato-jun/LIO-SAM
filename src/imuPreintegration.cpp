@@ -162,6 +162,7 @@ public:
     ros::Subscriber subImu;
     ros::Subscriber subOdometry;
     ros::Publisher pubImuOdometry;
+    ros::Publisher pubFailureDetection;
 
     bool systemInitialized = false;
 
@@ -208,6 +209,7 @@ public:
         subOdometry = nh.subscribe<nav_msgs::Odometry>("lio_sam/mapping/odometry_incremental", 5,    &IMUPreintegration::odometryHandler, this, ros::TransportHints().tcpNoDelay());
 
         pubImuOdometry = nh.advertise<nav_msgs::Odometry> (odomTopic+"_incremental", 2000);
+        pubFailureDetection = nh.advertise<std_msgs::Empty>("lio_sam/failure_detection", 1);
 
         boost::shared_ptr<gtsam::PreintegrationParams> p = gtsam::PreintegrationParams::MakeSharedU(imuGravity);
         p->accelerometerCovariance  = gtsam::Matrix33::Identity(3,3) * pow(imuAccNoise, 2); // acc white noise in continuous
@@ -397,6 +399,8 @@ public:
         if (failureDetection(prevVel_, prevBias_))
         {
             resetParams();
+            std_msgs::Empty fail_msg;
+            pubFailureDetection.publish(fail_msg);
             return;
         }
 
